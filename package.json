@@ -1,0 +1,90 @@
+{
+    "name": "qc-admin-api-common",
+    "version": "1.0.0",
+    "description": "QC Admin系统公共API接口库",
+    "main": "dist/index.js",
+    "module": "dist/index.esm.js",
+    "types": "dist/index.d.ts",
+    "files": [
+        "dist",
+        "src"
+    ],
+    "scripts": {
+        "build": "rollup -c",
+        "build:watch": "rollup -c -w",
+        "dev": "rollup -c -w",
+        "prepublishOnly": "npm run build"
+    },
+    "keywords": [
+        "qc-admin",
+        "api",
+        "typescript",
+        "common"
+    ],
+    "author": "QC Admin Team",
+    "license": "MIT",
+    "devDependencies": {
+        "@rollup/plugin-typescript": "^11.1.5",
+        "@types/node": "^20.8.0",
+        "rollup": "^4.0.0",
+        "rollup-plugin-dts": "^6.1.0",
+        "tslib": "^2.6.2",
+        "typescript": "^5.2.2"
+    },
+    "peerDependencies": {
+        "axios": ">=1.0.0"
+    },
+    "exports": {
+        ".": {
+            "import": "./src/index.ts",
+            "require": "./src/index.ts",
+            "types": "./src/index.ts"
+        },
+        "./rbac": {
+            "import": "./src/rbac.ts",
+            "require": "./src/rbac.ts",
+            "types": "./src/rbac.ts"
+        },
+        "./api_auth": {
+            "import": "./src/api_auth.ts",
+            "require": "./src/api_auth.ts",
+            "types": "./src/api_auth.ts"
+        },
+        "./attachment": {
+            "import": "./src/attachment.ts",
+            "require": "./src/attachment.ts",
+            "types": "./src/attachment.ts"
+        },
+        "./client_devices": {
+            "import": "./src/client_devices.ts",
+            "require": "./src/client_devices.ts",
+            "types": "./src/client_devices.ts"
+        },
+        "./routes": {
+            "import": "./src/routes.ts",
+            "require": "./src/routes.ts",
+            "types": "./src/routes.ts"
+        },
+        "./auth": {
+            "import": "./src/auth.ts",
+            "require": "./src/auth.ts",
+            "types": "./src/auth.ts"
+        },
+        "./user": {
+            "import": "./src/user.ts",
+            "require": "./src/user.ts",
+            "types": "./src/user.ts"
+        },
+        "./menu": {
+            "import": "./src/menu.ts",
+            "require": "./src/menu.ts",
+            "types": "./src/menu.ts"
+        },
+        "./logging": {
+            "import": "./src/logging.ts",
+            "require": "./src/logging.ts",
+            "types": "./src/logging.ts"
+        },
+        "./src/*": "./src/*"
+    }
+}

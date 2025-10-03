@@ -30,6 +30,9 @@ export class SocketClient implements ISocketClient {
   private currentBackoffDelay = 500; // 初始延迟 0.5 秒
   private readonly baseBackoffDelay = 500; // 基础延迟 0.5 秒
   private readonly maxBackoffDelay = 16000; // 最大延迟 16 秒
+  
+  // 用于区分是否为手动断开
+  private isManualDisconnect = false;
 
   constructor(options: SocketOptions) {
     this.options = {
@@ -70,6 +73,8 @@ export class SocketClient implements ISocketClient {
       throw new Error("WebSocket URL is required");
     }
 
+    // 重置手动断开标记
+    this.isManualDisconnect = false;
     this.setState(WebSocketState.CONNECTING);
 
     return new Promise((resolve, reject) => {
@@ -118,6 +123,9 @@ export class SocketClient implements ISocketClient {
    * 断开连接
    */
   public disconnect(): void {
+    // 标记为手动断开
+    this.isManualDisconnect = true;
+    
     this.clearReconnectTimer();
     this.stopHeartbeat();
 
@@ -302,8 +310,8 @@ export class SocketClient implements ISocketClient {
    * 安排重连
    */
   private scheduleReconnect(): void {
-    // 不再检查最大重试次数，持续重试
-    if (this._state === WebSocketState.DISCONNECTED) {
+    // 如果是手动断开，则不进行重连
+    if (this.isManualDisconnect) {
       this.log("Manually disconnected, not scheduling reconnect");
       return;
     }

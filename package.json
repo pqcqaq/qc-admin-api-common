@@ -90,6 +90,11 @@
             "require": "./src/test.ts",
             "types": "./src/test.ts"
         },
+        "./socket": {
+            "import": "./src/socket/index.ts",
+            "require": "./src/socket/index.ts",
+            "types": "./src/socket/index.ts"
+        },
         "./src/*": "./src/*"
     }
 }

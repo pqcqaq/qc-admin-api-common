@@ -85,6 +85,11 @@
             "require": "./src/logging.ts",
             "types": "./src/logging.ts"
         },
+        "./test": {
+            "import": "./src/test.ts",
+            "require": "./src/test.ts",
+            "types": "./src/test.ts"
+        },
         "./src/*": "./src/*"
     }
 }

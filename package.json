@@ -24,6 +24,7 @@
     "author": "QC Admin Team",
     "license": "MIT",
     "devDependencies": {
+        "@dcloudio/types": "^3.4.22",
         "@rollup/plugin-typescript": "^11.1.5",
         "@types/node": "^20.8.0",
         "rollup": "^4.0.0",
@@ -94,6 +95,16 @@
             "import": "./src/socket/index.ts",
             "require": "./src/socket/index.ts",
             "types": "./src/socket/index.ts"
+        },
+        "./adaptor/browser": {
+            "import": "./src/socket/adaptor/browser.ts",
+            "require": "./src/socket/adaptor/browser.ts",
+            "types": "./src/socket/adaptor/browser.ts"
+        },
+        "./adaptor/uniapp": {
+            "import": "./src/socket/adaptor/uniapp.ts",
+            "require": "./src/socket/adaptor/uniapp.ts",
+            "types": "./src/socket/adaptor/uniapp.ts"
         },
         "./src/*": "./src/*"
     }

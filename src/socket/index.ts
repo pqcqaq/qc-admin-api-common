@@ -6,6 +6,7 @@ import {
   type SubscriptionRecord,
   type ClientMessage,
   type SocketMessagePayload,
+  type IWebSocketAdapter,
   WebSocketState
 } from "./types";
 import { matchTopic } from "./topic";
@@ -15,7 +16,7 @@ import { matchTopic } from "./topic";
  * 支持主题订阅、自动重连、消息分发等功能
  */
 export class SocketClient implements ISocketClient {
-  private ws: WebSocket | null = null;
+  private adapter: IWebSocketAdapter;
   private _state: WebSocketState = WebSocketState.DISCONNECTED;
   private subscriptions: Map<string, SubscriptionRecord[]> = new Map();
   private stateChangeCallbacks: Set<(state: WebSocketState) => void> =
@@ -24,17 +25,22 @@ export class SocketClient implements ISocketClient {
   private readonly options: Required<SocketOptions>;
   private reconnectTimer: number | null = null;
   private heartbeatTimer: number | null = null;
-  private currentReconnectAttempts = 0;
+  
+  // 指数退避算法相关属性
+  private currentBackoffDelay = 500; // 初始延迟 0.5 秒
+  private readonly baseBackoffDelay = 500; // 基础延迟 0.5 秒
+  private readonly maxBackoffDelay = 16000; // 最大延迟 16 秒
 
-  constructor(options: SocketOptions = {}) {
+  constructor(options: SocketOptions) {
     this.options = {
       url: options.url || "/ws",
       token: options.token || "",
-      reconnectAttempts: options.reconnectAttempts ?? 5,
-      reconnectInterval: options.reconnectInterval ?? 3000,
       heartbeatInterval: options.heartbeatInterval ?? 30000,
-      debug: options.debug ?? false
+      debug: options.debug ?? false,
+      adapter: options.adapter
     };
+
+    this.adapter = this.options.adapter;
   }
 
   public get state(): WebSocketState {
@@ -71,33 +77,36 @@ export class SocketClient implements ISocketClient {
         const wsUrl = `${this.options.url}?token=${encodeURIComponent(
           authToken
         )}`;
-        this.ws = new WebSocket(wsUrl);
-
-        this.ws.onopen = () => {
+        
+        // 设置适配器的事件监听器
+        this.adapter.onOpen(() => {
           this.log("WebSocket connected");
           this.setState(WebSocketState.CONNECTED);
-          this.currentReconnectAttempts = 0;
+          this.resetBackoffDelay();
           this.startHeartbeat();
           this.resubscribeAll();
           resolve();
-        };
+        });
 
-        this.ws.onmessage = event => {
-          this.handleMessage(event);
-        };
+        this.adapter.onMessage((data) => {
+          this.handleMessage(data);
+        });
 
-        this.ws.onclose = event => {
-          this.log(`WebSocket closed: ${event.code} ${event.reason}`);
+        this.adapter.onClose((code, reason) => {
+          this.log(`WebSocket closed: ${code} ${reason}`);
           this.setState(WebSocketState.DISCONNECTED);
           this.stopHeartbeat();
           this.scheduleReconnect();
-        };
+        });
 
-        this.ws.onerror = error => {
+        this.adapter.onError((error) => {
           this.log("WebSocket error:", error);
           this.setState(WebSocketState.ERROR);
           reject(new Error("WebSocket connection failed"));
-        };
+        });
+        
+        // 开始连接
+        this.adapter.connect(wsUrl).catch(reject);
       } catch (error) {
         this.setState(WebSocketState.ERROR);
         reject(error);
@@ -112,11 +121,7 @@ export class SocketClient implements ISocketClient {
     this.clearReconnectTimer();
     this.stopHeartbeat();
 
-    if (this.ws) {
-      this.ws.close(1000, "Manual disconnect");
-      this.ws = null;
-    }
-
+    this.adapter.close(1000, "Manual disconnect");
     this.setState(WebSocketState.DISCONNECTED);
   }
 
@@ -204,9 +209,10 @@ export class SocketClient implements ISocketClient {
   /**
    * 处理收到的消息
    */
-  private handleMessage(event: MessageEvent): void {
+  private handleMessage(data: string | ArrayBuffer): void {
     try {
-      const message: SocketMessagePayload = JSON.parse(event.data);
+      const messageData = typeof data === 'string' ? data : new TextDecoder().decode(data);
+      const message: SocketMessagePayload = JSON.parse(messageData);
       this.log("Received message:", message);
 
       // 获取所有订阅的主题
@@ -258,8 +264,8 @@ export class SocketClient implements ISocketClient {
    * 发送消息到服务器
    */
   private sendMessage(message: ClientMessage): void {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify(message));
+    if (this.adapter.readyState === 1) { // OPEN
+      this.adapter.send(JSON.stringify(message));
       this.log("Sent message:", message);
     } else {
       this.log("Cannot send message: WebSocket not connected");
@@ -296,25 +302,21 @@ export class SocketClient implements ISocketClient {
    * 安排重连
    */
   private scheduleReconnect(): void {
-    if (
-      this.currentReconnectAttempts >= this.options.reconnectAttempts ||
-      this._state === WebSocketState.DISCONNECTED
-    ) {
-      this.log("Max reconnect attempts reached or manually disconnected");
+    // 不再检查最大重试次数，持续重试
+    if (this._state === WebSocketState.DISCONNECTED) {
+      this.log("Manually disconnected, not scheduling reconnect");
       return;
     }
 
     this.setState(WebSocketState.RECONNECTING);
-    this.currentReconnectAttempts++;
 
     this.reconnectTimer = window.setTimeout(() => {
-      this.log(
-        `Attempting to reconnect (${this.currentReconnectAttempts}/${this.options.reconnectAttempts})`
-      );
+      this.log(`Attempting to reconnect (delay: ${this.currentBackoffDelay}ms)`);
       this.connect().catch(error => {
         this.log("Reconnect failed:", error);
+        this.increaseBackoffDelay();
       });
-    }, this.options.reconnectInterval);
+    }, this.currentBackoffDelay);
   }
 
   /**
@@ -333,7 +335,7 @@ export class SocketClient implements ISocketClient {
   private startHeartbeat(): void {
     this.stopHeartbeat();
     this.heartbeatTimer = window.setInterval(() => {
-      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      if (this.adapter.readyState === 1) { // OPEN
         // 发送心跳消息（可以是空的订阅消息）
         this.sendMessage({ action: "ping", topic: "" });
       }
@@ -376,6 +378,25 @@ export class SocketClient implements ISocketClient {
   }
 
   /**
+   * 增加退避延迟时间（指数退避）
+   */
+  private increaseBackoffDelay(): void {
+    this.currentBackoffDelay = Math.min(
+      this.currentBackoffDelay * 2,
+      this.maxBackoffDelay
+    );
+    this.log(`Backoff delay increased to: ${this.currentBackoffDelay}ms`);
+  }
+
+  /**
+   * 重置退避延迟时间
+   */
+  private resetBackoffDelay(): void {
+    this.currentBackoffDelay = this.baseBackoffDelay;
+    this.log(`Backoff delay reset to: ${this.currentBackoffDelay}ms`);
+  }
+
+  /**
    * 日志输出
    */
   private log(message: string, ...args: any[]): void {
@@ -383,43 +404,6 @@ export class SocketClient implements ISocketClient {
       console.log(`[SocketClient] ${message}`, ...args);
     }
   }
-}
-
-// 创建全局单例实例
-let socketInstance: SocketClient | null = null;
-
-/**
- * 获取全局 WebSocket 客户端实例
- */
-export function getSocketClient(options?: SocketOptions): SocketClient {
-  if (!socketInstance) {
-    socketInstance = new SocketClient(options);
-  }
-  return socketInstance;
-}
-
-/**
- * 便捷的订阅函数
- */
-export function subscribe<T = any>(
-  topic: string,
-  handler: MessageHandler<T>,
-  options?: SocketOptions
-): UnsubscribeFunction {
-  const client = getSocketClient(options);
-  return client.subscribe(topic, handler);
-}
-
-/**
- * 便捷的取消订阅函数
- */
-export function unsubscribe(
-  topic: string,
-  handler?: MessageHandler,
-  options?: SocketOptions
-): void {
-  const client = getSocketClient(options);
-  client.unsubscribe(topic, handler);
 }
 
 // 导出类型

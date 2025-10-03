@@ -23,8 +23,8 @@ export class SocketClient implements ISocketClient {
     new Set();
 
   private readonly options: Required<SocketOptions>;
-  private reconnectTimer: number | null = null;
-  private heartbeatTimer: number | null = null;
+  private reconnectTimer: NodeJS.Timeout | null = null;
+  private heartbeatTimer: NodeJS.Timeout | null = null;
   
   // 指数退避算法相关属性
   private currentBackoffDelay = 500; // 初始延迟 0.5 秒
@@ -310,7 +310,7 @@ export class SocketClient implements ISocketClient {
 
     this.setState(WebSocketState.RECONNECTING);
 
-    this.reconnectTimer = window.setTimeout(() => {
+    this.reconnectTimer = setTimeout(() => {
       this.log(`Attempting to reconnect (delay: ${this.currentBackoffDelay}ms)`);
       this.connect().catch(error => {
         this.log("Reconnect failed:", error);
@@ -334,7 +334,7 @@ export class SocketClient implements ISocketClient {
    */
   private startHeartbeat(): void {
     this.stopHeartbeat();
-    this.heartbeatTimer = window.setInterval(() => {
+    this.heartbeatTimer = setInterval(() => {
       if (this.adapter.readyState === 1) { // OPEN
         // 发送心跳消息（可以是空的订阅消息）
         this.sendMessage({ action: "ping", topic: "" });

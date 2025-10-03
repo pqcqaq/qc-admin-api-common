@@ -4,6 +4,8 @@
 import type { IWebSocketAdapter, AdapterOptions } from "./types";
 import { WebSocketReadyState } from "./types";
 
+declare const uni: UniApp.Uni;
+
 /**
  * UniApp WebSocket 适配器
  * 基于 uni.connectSocket API 实现
@@ -17,8 +19,8 @@ export class UniAppWebSocketAdapter implements IWebSocketAdapter {
   private errorCallback: ((error: any) => void) | null = null;
   private debug = false;
 
-  constructor(options: AdapterOptions = {}) {
-    this.debug = options.debug ?? false;
+  constructor(options?: AdapterOptions) {
+    this.debug = options?.debug ?? false;
   }
 
   public get readyState(): WebSocketReadyState {
@@ -36,6 +38,10 @@ export class UniAppWebSocketAdapter implements IWebSocketAdapter {
             // 连接完成回调（成功或失败都会执行）
           }
         });
+          
+        if (!this.socketTask) {
+          throw new Error("Failed to create WebSocket connection, please check the url when using apps.");
+        }
 
         // 监听连接打开事件
         this.socketTask.onOpen(() => {
@@ -141,6 +147,6 @@ export class UniAppWebSocketAdapter implements IWebSocketAdapter {
 /**
  * 创建 UniApp WebSocket 适配器的工厂函数
  */
-export function createUniAppAdapter(options?: AdapterOptions): IWebSocketAdapter {
+export function createUniAppAdapter(options: AdapterOptions = {}): IWebSocketAdapter {
   return new UniAppWebSocketAdapter(options);
 }

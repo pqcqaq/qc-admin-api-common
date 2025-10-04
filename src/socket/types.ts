@@ -1,6 +1,6 @@
 // WebSocket 消息类型定义
 export interface ClientMessage {
-  action: "subscribe" | "unsubscribe" | "ping" | "pong";
+  action: "subscribe" | "unsubscribe" | "ping" | "pong" | "msg";
   topic: string;
   data?: string;
 }
@@ -66,7 +66,8 @@ export interface SocketOptions {
   debug?: boolean;
   /** WebSocket 适配器实例 */
   adapter: IWebSocketAdapter;
-  refreshToken?: () => Promise<Required<SocketOptions>["token"]>
+  refreshToken?: () => Promise<Required<SocketOptions>["token"]>;
+  errorHandler?: (msg: ErrorMsg['data']) => void;
 }
 
 // 取消订阅函数类型
@@ -97,6 +98,9 @@ export interface ISocketClient {
 
   // 监听连接状态变化
   onStateChange(callback: (state: WebSocketState) => void): () => void;
+
+  // 发送消息
+  sendMessage(topic: string, data?: any): void;
 }
 
 // 内部订阅记录
@@ -108,6 +112,14 @@ export interface SubscriptionRecord {
 
 export type DisConnectMsg = {
   topic: "?dc";
+  data: {
+    code: string;
+    detail: string;
+  }
+}
+
+export type ErrorMsg = {
+  topic: "?er";
   data: {
     code: string;
     detail: string;

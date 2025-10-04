@@ -8,7 +8,8 @@ import {
   type SocketMessagePayload,
   type IWebSocketAdapter,
   WebSocketState,
-  DisConnectMsg
+  DisConnectMsg,
+  ErrorMsg
 } from "./types";
 import { matchTopic } from "./topic";
 
@@ -43,7 +44,8 @@ export class SocketClient implements ISocketClient {
       heartbeatInterval: options.heartbeatInterval ?? 30000,
       debug: options.debug ?? false,
       adapter: options.adapter,
-      refreshToken: options.refreshToken || (() => Promise.resolve(""))
+      refreshToken: options.refreshToken || (() => Promise.resolve("")),
+      errorHandler: options.errorHandler || (() => {})
     };
 
     this.adapter = this.options.adapter;
@@ -262,7 +264,7 @@ export class SocketClient implements ISocketClient {
       action: "subscribe",
       topic
     };
-    this.sendMessage(message);
+    this.sendMessageInner(message);
   }
 
   /**
@@ -273,19 +275,31 @@ export class SocketClient implements ISocketClient {
       action: "unsubscribe",
       topic
     };
-    this.sendMessage(message);
+    this.sendMessageInner(message);
   }
 
   /**
    * 发送消息到服务器
    */
-  private sendMessage(message: ClientMessage): void {
+  private sendMessageInner(message: ClientMessage): void {
     if (this.adapter.readyState === 1) { // OPEN
       this.adapter.send(JSON.stringify(message));
       this.log("Sent message:", message);
     } else {
       this.log("Cannot send message: WebSocket not connected");
     }
+  }
+
+  /**
+   * 发送消息到服务器
+   */
+  public sendMessage(topic: string, data?: any): void {
+    const message: ClientMessage = {
+      action: "msg",
+      topic,
+      data: data || {}
+    };
+    this.sendMessageInner(message);
   }
 
   /**
@@ -353,7 +367,7 @@ export class SocketClient implements ISocketClient {
     this.heartbeatTimer = setInterval(() => {
       if (this.adapter.readyState === 1) { // OPEN
         // 发送心跳消息（可以是空的订阅消息）
-        this.sendMessage({ action: "ping", topic: "" });
+        this.sendMessageInner({ action: "ping", topic: "" });
       }
     }, this.options.heartbeatInterval);
   }
@@ -422,7 +436,7 @@ export class SocketClient implements ISocketClient {
   }
 
   private selfSubs(): UnsubscribeFunction {
-    return this.subscribe<DisConnectMsg["data"]>("?dc", (message) => {
+    const fn1 = this.subscribe<DisConnectMsg["data"]>("?dc", (message) => {
       this.log("[SocketClient] Received disconnect message:", message);
       if (message?.code === "TOKEN_EXPIRED") {
         this.disconnect();
@@ -442,6 +456,16 @@ export class SocketClient implements ISocketClient {
         });
       }
     })
+
+    const fn2 = this.subscribe<ErrorMsg['data']>("?er", (message) => {
+      this.log("[SocketClient] Received error message:", message);
+      this.options.errorHandler?.(message);
+    })
+
+    return () => {
+      fn1();
+      fn2();
+    }
   }
 }
 

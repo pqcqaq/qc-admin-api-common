@@ -7,7 +7,8 @@ import {
   type ClientMessage,
   type SocketMessagePayload,
   type IWebSocketAdapter,
-  WebSocketState
+  WebSocketState,
+  DisConnectMsg
 } from "./types";
 import { matchTopic } from "./topic";
 
@@ -30,6 +31,7 @@ export class SocketClient implements ISocketClient {
   private currentBackoffDelay = 500; // 初始延迟 0.5 秒
   private readonly baseBackoffDelay = 500; // 基础延迟 0.5 秒
   private readonly maxBackoffDelay = 16000; // 最大延迟 16 秒
+  private disSub: UnsubscribeFunction | null = null;
   
   // 用于区分是否为手动断开
   private isManualDisconnect = false;
@@ -40,7 +42,8 @@ export class SocketClient implements ISocketClient {
       token: options.token || "",
       heartbeatInterval: options.heartbeatInterval ?? 30000,
       debug: options.debug ?? false,
-      adapter: options.adapter
+      adapter: options.adapter,
+      refreshToken: options.refreshToken || (() => Promise.resolve(""))
     };
 
     this.adapter = this.options.adapter;
@@ -76,6 +79,11 @@ export class SocketClient implements ISocketClient {
     // 重置手动断开标记
     this.isManualDisconnect = false;
     this.setState(WebSocketState.CONNECTING);
+
+    if (this.disSub) {
+      this.disSub();
+    }
+    this.disSub = this.selfSubs();
 
     return new Promise((resolve, reject) => {
       try {
@@ -411,6 +419,29 @@ export class SocketClient implements ISocketClient {
     if (this.options.debug) {
       console.log(`[SocketClient] ${message}`, ...args);
     }
+  }
+
+  private selfSubs(): UnsubscribeFunction {
+    return this.subscribe<DisConnectMsg["data"]>("?dc", (message) => {
+      this.log("[SocketClient] Received disconnect message:", message);
+      if (message?.code === "TOKEN_EXPIRED") {
+        this.disconnect();
+        this.log("Disconnected due to token expiration");
+        this.options.refreshToken?.().then((newToken) => {
+          if (!newToken) {
+            this.log("No new token obtained, cannot reconnect");
+            return;
+          }
+          this.log("Token refreshed, reconnecting...");
+          this.options.token = newToken;
+          this.connect(newToken).catch((error) => {
+            this.log("Reconnection failed:", error);
+          });
+        }).catch((error) => {
+          this.log("Failed to refresh token:", error);
+        });
+      }
+    })
   }
 }
 

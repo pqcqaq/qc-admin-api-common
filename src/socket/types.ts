@@ -66,6 +66,7 @@ export interface SocketOptions {
   debug?: boolean;
   /** WebSocket 适配器实例 */
   adapter: IWebSocketAdapter;
+  refreshToken?: () => Promise<Required<SocketOptions>["token"]>
 }
 
 // 取消订阅函数类型
@@ -103,4 +104,12 @@ export interface SubscriptionRecord {
   topic: string;
   handler: MessageHandler;
   id: string;
+}
+
+export type DisConnectMsg = {
+  topic: "?dc";
+  data: {
+    code: string;
+    detail: string;
+  }
 }

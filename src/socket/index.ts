@@ -9,7 +9,13 @@ import {
   type IWebSocketAdapter,
   WebSocketState,
   DisConnectMsg,
-  ErrorMsg
+  ErrorMsg,
+  ChannelMessageHandler,
+  ChannelSender,
+  ChannelCloseHandler,
+  ChannelCloser,
+  ChannelCreateRes,
+  ErrorMsgData
 } from "./types";
 import { matchTopic } from "./topic";
 
@@ -466,6 +472,105 @@ export class SocketClient implements ISocketClient {
       fn1();
       fn2();
     }
+  }
+
+  public createChannel<S, R>(topic: string, handler: ChannelMessageHandler<R>, errHandler?: ChannelCloseHandler):
+    Promise<{
+      send: ChannelSender<S>;
+      close: ChannelCloser;
+      onClose: (handler: ChannelCloseHandler) => void; 
+    }> {
+    return new Promise((resolve, reject) => {
+      let tryCount = 0;
+      const maxTry = 30;
+      let channelId: string | undefined = undefined;
+      let error: ErrorMsgData | undefined = undefined;
+
+      const handleChannelMsg = (res: ChannelCreateRes) => {
+        if (res.error) {
+          this.log("Channel creation error:", res.error);
+          error = res.error;
+          return;
+        }
+        if (res.channelId) {
+          channelId = res.channelId;
+          this.log(`Channel created with ID: ${channelId}`);
+        }
+      }
+
+      const cr = this.subscribe<ChannelCreateRes>(`${topic}.cre`, handleChannelMsg);
+      const message: ClientMessage = {
+        action: "channel_start",
+        topic
+      };
+      this.sendMessageInner(message);
+
+      const handleSuccess = () => {
+        const unHandler = this.subscribe<R>(channelId!, handler);
+        const er = this.subscribe<ErrorMsgData>(`${channelId}.err`, (msg) => errHandler?.(msg));
+
+        const send = (data: any) => {
+          this.sendMessageInner({
+            action: "channel",
+            topic: channelId!,
+            data
+          })
+        }
+
+        const close = () => {
+          this.sendMessageInner({
+            action: "channel_close",
+            topic: channelId!
+          })
+          if (er) er();
+          unHandler();
+          this.unsubscribe(channelId!);
+        }
+
+        let closeHandler: ChannelCloseHandler | null = null;
+
+        const setCloseHandler = (handler: ChannelCloseHandler) => {
+          closeHandler = handler;
+        }
+
+        // 订阅关闭消息
+        const unsubClose = this.subscribe<ErrorMsgData>(`${channelId}.clo`, (msg) => {
+          if (closeHandler) {
+            closeHandler(msg);
+          }
+          unsubClose();
+          if (er) er();
+          unHandler();
+          this.unsubscribe(channelId!);
+        })
+        
+        resolve({
+          send,
+          close,
+          onClose: setCloseHandler
+        });
+      }
+
+      // 每隔100ms检查一次是否收到channelId，最多检查30次
+      const interval = setInterval(() => {
+        if (channelId) {
+          clearInterval(interval);
+          cr();
+          handleSuccess();
+        }
+        if (error) {
+          clearInterval(interval);
+          cr();
+          reject(new Error(`Channel creation failed: ${error.code} ${error.detail}`));
+        }
+        if (tryCount >= maxTry) {
+          clearInterval(interval);
+          cr();
+          reject(new Error("Channel creation timed out"));
+        }
+        tryCount++;
+      }, 100)
+    })
   }
 }
 

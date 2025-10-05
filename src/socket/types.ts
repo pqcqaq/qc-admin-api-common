@@ -1,6 +1,6 @@
 // WebSocket 消息类型定义
 export interface ClientMessage {
-  action: "subscribe" | "unsubscribe" | "ping" | "pong" | "msg";
+  action: "subscribe" | "unsubscribe" | "ping" | "pong" | "msg" | "channel_start" | "channel" | "channel_close";
   topic: string;
   data?: string;
 }
@@ -73,6 +73,16 @@ export interface SocketOptions {
 // 取消订阅函数类型
 export type UnsubscribeFunction = () => void;
 
+// channel 相关
+export type ChannelSender<T> = (data: T) => void;
+export type ChannelMessageHandler<T> = (data: T) => void;
+export type ChannelCloser = () => void;
+export type ChannelCloseHandler = (reason: ErrorMsgData) => void;
+export type ErrorMsgData = {
+  code: string;
+  detail: string;
+}
+
 // WebSocket 实例接口
 export interface ISocketClient {
   // 连接状态
@@ -101,6 +111,13 @@ export interface ISocketClient {
 
   // 发送消息
   sendMessage(topic: string, data?: any): void;
+
+  // 开启一个channel
+  createChannel<S, R>(topic: string, handler: ChannelMessageHandler<R>, errHandler?: ChannelCloseHandler): Promise<{
+    send: ChannelSender<S>;
+    close: ChannelCloser;
+    onClose: (handler: ChannelCloseHandler) => void;
+  }>;
 }
 
 // 内部订阅记录
@@ -124,4 +141,9 @@ export type ErrorMsg = {
     code: string;
     detail: string;
   }
+}
+
+export type ChannelCreateRes = {
+  channelId?: string;
+  error?: ErrorMsgData
 }

@@ -493,7 +493,7 @@ export class SocketClient implements ISocketClient {
       let tryCount = 0;
       const maxTry = 30;
       let channelId: string | undefined = undefined;
-      let error: ErrorMsgData | undefined = undefined;
+      let error: ErrorMsgData['error'] | undefined = undefined;
 
       const handleChannelMsg = (res: ChannelCreateRes) => {
         if (res.error) {
@@ -516,7 +516,7 @@ export class SocketClient implements ISocketClient {
 
       const handleSuccess = () => {
         const unHandler = this.subscribe<R>(channelId!, handler);
-        const er = this.subscribe<ErrorMsgData>(`${channelId}.err`, (msg) => errHandler?.(msg));
+        const er = this.subscribe<ErrorMsgData>(`${channelId}.err`, (msg) => errHandler?.(msg.error));
 
         const send = (data: any) => {
           this.sendMessageInner({

@@ -81,10 +81,14 @@ export type UnsubscribeFunction = () => void;
 export type ChannelSender<T> = (data: T) => void;
 export type ChannelMessageHandler<T> = (data: T) => void;
 export type ChannelCloser = () => void;
-export type ChannelCloseHandler = (reason: ErrorMsgData) => void;
+export type ChannelCloseHandler = (reason: ErrorMsgData['error']) => void;
 export type ErrorMsgData = {
   code: string;
   detail: string;
+  error: {
+    code: string;
+    detail: string;
+  }
 }
 
 // WebSocket 实例接口
@@ -149,5 +153,5 @@ export type ErrorMsg = {
 
 export type ChannelCreateRes = {
   channelId?: string;
-  error?: ErrorMsgData
+  error?: ErrorMsgData['error']
 }

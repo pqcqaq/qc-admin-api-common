@@ -13,6 +13,10 @@ export interface SocketMessagePayload {
   timestamp?: number;
 }
 
+export interface SocketActionPayload {
+  action: "connected";
+}
+
 // 消息处理器类型
 export type MessageHandler<T = any> = (data: T, topic: string) => void;
 

@@ -15,7 +15,8 @@ import {
   ChannelCloseHandler,
   ChannelCloser,
   ChannelCreateRes,
-  ErrorMsgData
+  ErrorMsgData,
+  SocketActionPayload
 } from "./types";
 import { matchTopic } from "./topic";
 
@@ -101,16 +102,19 @@ export class SocketClient implements ISocketClient {
         
         // 设置适配器的事件监听器
         this.adapter.onOpen(() => {
-          this.log("WebSocket connected");
-          this.setState(WebSocketState.CONNECTED);
+          this.log("WebSocket connected waiting for connected message...");
           this.resetBackoffDelay();
           this.startHeartbeat();
           this.resubscribeAll();
-          resolve();
         });
 
         this.adapter.onMessage((data) => {
-          this.handleMessage(data);
+          this.handleMessage(data, (msg) => {
+            if (msg.action === "connected") {
+              this.setState(WebSocketState.CONNECTED);
+              resolve();
+            }
+          });
         });
 
         this.adapter.onClose((code, reason) => {
@@ -233,10 +237,15 @@ export class SocketClient implements ISocketClient {
   /**
    * 处理收到的消息
    */
-  private handleMessage(data: string | ArrayBuffer): void {
+  private handleMessage(data: string | ArrayBuffer, actionCallback: (msg: SocketActionPayload) => void): void {
     try {
       const messageData = typeof data === 'string' ? data : new TextDecoder().decode(data);
       const message: SocketMessagePayload = JSON.parse(messageData);
+      if (Object.prototype.hasOwnProperty.call(message, "action")) {
+        actionCallback(message as any as SocketActionPayload);
+        return;
+      }
+      
       this.log("Received message:", message);
 
       // 获取所有订阅的主题

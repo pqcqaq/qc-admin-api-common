@@ -16,9 +16,105 @@ import {
   ChannelCloser,
   ChannelCreateRes,
   ErrorMsgData,
-  SocketActionPayload
+  SocketActionPayload,
+  CreateMsg,
+  Channel
 } from "./types";
 import { matchTopic } from "./topic";
+
+export class Channeler<T> implements Channel<T> {
+  id: string;
+  topic: string;
+  
+  private queue: any[] = [];
+  private resolvers: ((value: any) => void)[] = [];
+  private rejecters: ((error: any) => void)[] = [];
+  private closed = false;
+
+  private sender: (msg: any) => void;
+  private closer: () => void;
+
+  constructor(id: string, topic: string, sender: (msg: any) => void, closer: () => void) {
+    this.id = id;
+    this.topic = topic;
+    this.sender = sender;
+    this.closer = closer;
+  }
+
+  // 生产者调用：发送数据
+  send<T>(data: T): void {
+    if (this.closed) {
+      throw new Error(`Channel ${this.id} is closed`);
+    }
+    
+    // 发送信息
+    this.sender(data);
+  }
+
+  // 消费者调用：读取数据（阻塞）
+  async read<T>(): Promise<T> {
+
+    // 如果队列中有数据，直接返回
+    if (this.queue.length > 0) {
+      return this.queue.shift()!;
+    }
+
+    // 如果通道已关闭且队列为空，抛出错误或返回特殊值
+    if (this.closed) {
+      throw new Error(`Channel ${this.id} is closed and empty`);
+    }
+
+    // 创建 Promise 等待数据
+    return new Promise<T>((resolve, reject) => {
+      this.resolvers.push(resolve);
+      this.rejecters.push(reject);
+    });
+  }
+
+  // 关闭通道
+  close(): void {
+    if (this.closed) {
+      return;
+    }
+
+    // 发送关闭信息
+    this.closer();
+  }
+
+  // 内部方法：接收数据（由 send 调用）
+  onReceive(data: any): void {
+    // 如果有等待的读取者，直接 resolve
+    if (this.resolvers.length > 0) {
+      const resolve = this.resolvers.shift()!;
+      this.rejecters.shift(); // 同时移除对应的 rejecter
+      resolve(data);
+    } else {
+      // 否则放入队列
+      this.queue.push(data);
+    }
+  }
+
+  // 内部方法：关闭通道（由 close 调用）
+  onClose(reason: ErrorMsgData['error']): void {
+    this.closed = true;
+    
+    // 拒绝所有等待的读取者
+    const closeError = new Error(`Channel ${this.id} is closed ${reason ? `: ${reason.code} ${reason.detail}` : ''}`);
+    this.rejecters.forEach(reject => reject(closeError));
+    this.resolvers = [];
+    this.rejecters = [];
+  }
+
+  // 辅助方法：检查通道状态
+  isClosed(): boolean {
+    return this.closed;
+  }
+
+  // 辅助方法：获取队列长度
+  size(): number {
+    return this.queue.length;
+  }
+}
 
 /**
  * WebSocket 客户端实现
@@ -28,6 +124,7 @@ export class SocketClient implements ISocketClient {
   private adapter: IWebSocketAdapter;
   private _state: WebSocketState = WebSocketState.DISCONNECTED;
   private subscriptions: Map<string, SubscriptionRecord[]> = new Map();
+  private topics: Map<string, SubscriptionRecord[]> = new Map();
   private stateChangeCallbacks: Set<(state: WebSocketState) => void> =
     new Set();
 
@@ -477,9 +574,74 @@ export class SocketClient implements ISocketClient {
       this.options.errorHandler?.(message);
     })
 
+    const fn3 = this.subscribe<CreateMsg['data']>("?cr/#", (message) => {
+      // 获取所有订阅的主题
+      const subscribedTopics = Array.from(this.topics.keys());
+            // 找到匹配的订阅并分发消息
+      for (const subscribedTopic of subscribedTopics) {
+        if (matchTopic(subscribedTopic, message.topic)) {
+          const records = this.topics.get(subscribedTopic);
+          if (records) {
+            for (const record of records) {
+              const t = async () => {
+                try {
+                  let newChannel: Channeler<any> | null = null;
+                  const {send, close, onClose, channelId} = await this.createChannel(message.topic, (msg) => {
+                    if (newChannel) {
+                        newChannel.onReceive(msg);
+                      }
+                  })
+                  onClose(err => {
+                    if (newChannel) {
+                      newChannel.onClose(err);
+                    }
+                  })
+                  newChannel = new Channeler(channelId, message.topic, send, close);
+                  record.handler(newChannel, message.topic);
+                } catch (error) {
+                  this.log("Error in create channel handler:", error);
+                }
+              }
+              t()
+            }
+          }
+        }
+      }
+    })
+
     return () => {
       fn1();
       fn2();
+      fn3();
+    }
+  }
+
+  public registerChannelOpen<T>(topic: string, handler: (channel: Channel<T>) => void): UnsubscribeFunction {
+    const subsId = this.generateId();
+    const record: SubscriptionRecord = {
+      topic,
+      handler,
+      id: subsId,
+    }
+
+    const isFirst = !this.topics.has(topic);
+    if (isFirst) {
+      this.topics.set(topic, []);
+    }
+    this.topics.get(topic)!.push(record);
+    
+    return () => {
+      const records = this.topics.get(topic);
+      if (!records) return;
+
+      const index = records.findIndex(r => r.id === subsId);
+      if (index !== -1) {
+        records.splice(index, 1);
+        if (records.length === 0) {
+          this.topics.delete(topic);
+        }
+      }
+      this.log(`Unregistered channel open handler for topic: ${topic}`);
     }
   }
 
@@ -488,6 +650,7 @@ export class SocketClient implements ISocketClient {
       send: ChannelSender<S>;
       close: ChannelCloser;
       onClose: (handler: ChannelCloseHandler) => void; 
+      channelId: string;
     }> {
     return new Promise((resolve, reject) => {
       let tryCount = 0;
@@ -554,6 +717,7 @@ export class SocketClient implements ISocketClient {
         })
         
         resolve({
+          channelId: channelId!,
           send,
           close,
           onClose: setCloseHandler

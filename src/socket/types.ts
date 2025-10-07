@@ -91,6 +91,16 @@ export type ErrorMsgData = {
   }
 }
 
+export interface Channel<T> {
+  id: string;
+  topic: string;
+
+  send<T>(data: T): void;
+  read<T>(): Promise<T>;
+  close(): void;
+  isClosed(): boolean;
+}
+
 // WebSocket 实例接口
 export interface ISocketClient {
   // 连接状态
@@ -125,7 +135,11 @@ export interface ISocketClient {
     send: ChannelSender<S>;
     close: ChannelCloser;
     onClose: (handler: ChannelCloseHandler) => void;
+    channelId: string;
   }>;
+
+  // 监听服务器创建的channel
+  registerChannelOpen<T>(topic: string, handler:(channel: Channel<T>) => void): UnsubscribeFunction;
 }
 
 // 内部订阅记录
@@ -148,6 +162,13 @@ export type ErrorMsg = {
   data: {
     code: string;
     detail: string;
+  }
+}
+
+export type CreateMsg = {
+  topic: "?cr";
+  data: {
+    topic: string;
   }
 }
 

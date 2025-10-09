@@ -654,7 +654,7 @@ export class SocketClient implements ISocketClient {
     }> {
     return new Promise((resolve, reject) => {
       let tryCount = 0;
-      const maxTry = 30;
+      const maxTry = 100;
       let channelId: string | undefined = undefined;
       let error: ErrorMsgData['error'] | undefined = undefined;
 
@@ -678,6 +678,7 @@ export class SocketClient implements ISocketClient {
       this.sendMessageInner(message);
 
       const handleSuccess = () => {
+        this.log("Handling successful channel creation");
         const unHandler = this.subscribe<R>(channelId!, handler);
         const er = this.subscribe<ErrorMsgData>(`${channelId}.err`, (msg) => errHandler?.(msg.error));
 

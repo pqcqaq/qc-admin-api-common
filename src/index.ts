@@ -31,3 +31,8 @@ export type Pagination = {
   /** 是否有上一页 */
   hasPrev: boolean;
 };
+
+export type SimpleResponseData<T> = {
+  data: T
+  success: boolean
+}

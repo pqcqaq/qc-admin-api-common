@@ -255,10 +255,17 @@ export class SocketClient implements ISocketClient {
    */
   public subscribe<T = any>(
     topic: string,
-    handler: MessageHandler<T>
+    handler: MessageHandler<T>,
+    errHandler?: (err: ErrorMsg['data']) => void
   ): UnsubscribeFunction {
     const id = this.generateId();
     const record: SubscriptionRecord = { topic, handler, id };
+    const errRecord: SubscriptionRecord = { topic, handler: (data) => {
+      this.log("Result handler invoked for topic:", topic);
+      if (data.error && errHandler) {
+        errHandler(data.error as ErrorMsg['data']);
+      }
+    }, id: id + "_res" };
 
     // 检查是否是该主题的第一个订阅
     const isFirstSubscription = !this.subscriptions.has(topic);
@@ -269,18 +276,26 @@ export class SocketClient implements ISocketClient {
     }
     this.subscriptions.get(topic)!.push(record);
 
+    if (errHandler) {
+        this.subscriptions.get(topic)!.push(errRecord);
+    }
+
     // 只有在第一次订阅该主题且已连接时，才发送订阅请求到服务器
     if (isFirstSubscription && this._state === WebSocketState.CONNECTED) {
       this.sendSubscribeMessage(topic);
+      this.sendSubscribeMessage(topic + ".res");
     }
 
     this.log(
-      `Subscribed to topic: ${topic} (handlers: ${this.subscriptions.get(topic)!.length})`
+      `Try to topic: ${topic} (handlers: ${this.subscriptions.get(topic)!.length})`
     );
 
     // 返回取消订阅函数
     return () => {
       this.unsubscribeById(id);
+      if (errHandler) {
+        this.unsubscribeById(id + "_res");
+      }
     };
   }
 

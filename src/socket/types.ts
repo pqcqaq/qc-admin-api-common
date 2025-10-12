@@ -115,7 +115,8 @@ export interface ISocketClient {
   // 订阅主题
   subscribe<T = any>(
     topic: string,
-    handler: MessageHandler<T>
+    handler: MessageHandler<T>,
+    errHandler?: (err: ErrorMsg['data']) => void
   ): UnsubscribeFunction;
 
   // 取消订阅
@@ -174,5 +175,10 @@ export type CreateMsg = {
 
 export type ChannelCreateRes = {
   channelId?: string;
+  error?: ErrorMsgData['error']
+}
+
+export type SubsRes = {
+  success?: boolean;
   error?: ErrorMsgData['error']
 }

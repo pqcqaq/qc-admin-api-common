@@ -6,6 +6,8 @@ import { http } from "./http";
 export type APIAuth = {
   /** API认证ID */
   id: string;
+  /** API类型 ws http*/
+  type: string;
   /** 创建时间 */
   createTime: string;
   /** 更新时间 */

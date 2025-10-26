@@ -111,6 +111,11 @@
             "require": "./src/system_monitor.ts",
             "types": "./src/system_monitor.ts"
         },
+        "./area": {
+            "import": "./src/area.ts",
+            "require": "./src/area.ts",
+            "types": "./src/area.ts"
+        },
         "./src/*": "./src/*"
     }
 }

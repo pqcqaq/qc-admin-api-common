@@ -94,9 +94,11 @@ export const getLogin = (data: object) => {
   });
 };
 
+export const refreshTokenApiEndpoint = "/api/auth/refresh-token";
+
 /** 刷新`token` */
 export const refreshTokenApi = (data: object) => {
-  return http.request<RefreshTokenResult>("post", "/api/auth/refresh-token", {
+  return http.request<RefreshTokenResult>("post", refreshTokenApiEndpoint, {
     data
   });
 };

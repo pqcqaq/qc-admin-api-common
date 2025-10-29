@@ -116,6 +116,14 @@
             "require": "./src/area.ts",
             "types": "./src/area.ts"
         },
+        "./workflow": {
+            "import": "./src/workflow/index.ts",
+            "require": "./src/workflow/index.ts",
+            "types": "./src/workflow/index.ts"
+        },
         "./src/*": "./src/*"
+    },
+    "dependencies": {
+        "vue": "^3.5.22"
     }
 }

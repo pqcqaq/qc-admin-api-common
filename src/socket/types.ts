@@ -8,6 +8,7 @@ export interface ClientMessage {
 // 服务器发送的消息类型
 export interface SocketMessagePayload {
   topic: string;
+  action?: "init"
   userId: number;
   data: any;
   timestamp?: number;
@@ -147,6 +148,7 @@ export interface ISocketClient {
 export interface SubscriptionRecord {
   topic: string;
   handler: MessageHandler;
+  init?: MessageHandler<any[]>;
   id: string;
 }
 

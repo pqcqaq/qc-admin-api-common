@@ -256,10 +256,11 @@ export class SocketClient implements ISocketClient {
   public subscribe<T = any>(
     topic: string,
     handler: MessageHandler<T>,
-    errHandler?: (err: ErrorMsg['data']) => void
+    errHandler?: (err: ErrorMsg['data']) => void,
+    init?: MessageHandler<any[]>
   ): UnsubscribeFunction {
     const id = this.generateId();
-    const record: SubscriptionRecord = { topic, handler, id };
+    const record: SubscriptionRecord = { topic, handler, id, init };
     const errRecord: SubscriptionRecord = { topic, handler: (data) => {
       this.log("Result handler invoked for topic:", topic);
       if (data.error && errHandler) {
@@ -283,7 +284,6 @@ export class SocketClient implements ISocketClient {
     // 只有在第一次订阅该主题且已连接时，才发送订阅请求到服务器
     if (isFirstSubscription && this._state === WebSocketState.CONNECTED) {
       this.sendSubscribeMessage(topic);
-      this.sendSubscribeMessage(topic + ".res");
     }
 
     this.log(
@@ -355,7 +355,9 @@ export class SocketClient implements ISocketClient {
       const message: SocketMessagePayload = JSON.parse(messageData);
       if (Object.prototype.hasOwnProperty.call(message, "action")) {
         actionCallback(message as any as SocketActionPayload);
-        return;
+        if (message.action !== "init") {
+          return;
+        }
       }
       
       this.log("Received message:", message);
@@ -370,6 +372,10 @@ export class SocketClient implements ISocketClient {
           if (records) {
             for (const record of records) {
               try {
+                if (message.action === "init" && record.init) {
+                  record.init(message.data as any[], message.topic);
+                  continue;
+                }
                 record.handler(message.data, message.topic);
               } catch (error) {
                 this.log("Error in message handler:", error);

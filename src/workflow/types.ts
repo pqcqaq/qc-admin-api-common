@@ -31,7 +31,7 @@ export interface WorkflowApplicationResponse {
 export interface CreateWorkflowApplicationRequest {
   name: string;
   description?: string;
-  startNodeId: string;
+  startNodeId?: string; // 可选，如果不提供则后端自动创建默认开始节点
   variables?: Record<string, any>;
   status?: 'draft' | 'published' | 'archived';
 }
@@ -358,4 +358,116 @@ export interface PageWorkflowExecutionLogRequest extends PaginationRequest {
 export interface PageWorkflowExecutionLogResponse {
   data: WorkflowExecutionLogResponse[];
   pagination: Pagination;
+}
+
+// ============ Graph Operations Types ============
+
+/** 连接节点请求 */
+export interface ConnectNodesRequest {
+  fromNodeId: string;
+  toNodeId: string;
+}
+
+/** 断开节点请求 */
+export interface DisconnectNodesRequest {
+  fromNodeId: string;
+}
+
+/** 分支连接请求 */
+export interface ConnectBranchRequest {
+  fromNodeId: string;
+  toNodeId: string;
+  branchName: string;
+}
+
+/** 断开分支请求 */
+export interface DisconnectBranchRequest {
+  fromNodeId: string;
+  branchName: string;
+}
+
+/** 添加节点到并行执行请求 */
+export interface AddNodeToParallelRequest {
+  parallelNodeId: string;
+  childNodeId: string;
+}
+
+/** 从并行执行中移除节点请求 */
+export interface RemoveNodeFromParallelRequest {
+  childNodeId: string;
+}
+
+/** 更新节点位置请求 */
+export interface UpdateNodePositionRequest {
+  nodeId: string;
+  positionX: number;
+  positionY: number;
+}
+
+/** 批量更新节点位置请求 */
+export interface BatchUpdateNodePositionsRequest {
+  positions: Array<{
+    nodeId: string;
+    positionX: number;
+    positionY: number;
+  }>;
+}
+
+/** 批量删除节点请求 */
+export interface BatchDeleteNodesRequest {
+  nodeIds: string[];
+}
+
+/** 节点连接信息响应 */
+export interface NodeConnectionsResponse {
+  success: boolean;
+  data: {
+    next_node_id?: string;
+    parent_node_id?: string;
+    branches?: Record<string, string>;
+    parallel_children?: string[];
+  };
+}
+
+/** 并行子节点列表响应 */
+export interface ParallelChildrenResponse {
+  success: boolean;
+  data: WorkflowNodeResponse[];
+  count: number;
+}
+
+/** 通用成功响应 */
+export interface SuccessResponse {
+  success: boolean;
+  message: string;
+}
+
+/** 单个应用响应 */
+export interface WorkflowApplicationResult {
+  success: boolean;
+  data: WorkflowApplicationResponse;
+  message?: string;
+}
+
+/** 应用列表响应 */
+export interface WorkflowApplicationListResult {
+  success: boolean;
+  data: WorkflowApplicationResponse[];
+  pagination?: Pagination;
+  count?: number;
+}
+
+/** 单个节点响应 */
+export interface WorkflowNodeResult {
+  success: boolean;
+  data: WorkflowNodeResponse;
+  message?: string;
+}
+
+/** 节点列表响应 */
+export interface WorkflowNodeListResult {
+  success: boolean;
+  data: WorkflowNodeResponse[];
+  pagination?: Pagination;
+  count?: number;
 }

@@ -93,6 +93,7 @@ export interface WorkflowNodeResponse {
   retryCount: number;
   positionX: number;
   positionY: number;
+  color?: string;
 }
 
 export interface CreateWorkflowNodeRequest {
@@ -115,6 +116,7 @@ export interface CreateWorkflowNodeRequest {
   retryCount?: number;
   positionX?: number;
   positionY?: number;
+  color?: string;
 }
 
 export interface UpdateWorkflowNodeRequest {
@@ -136,6 +138,7 @@ export interface UpdateWorkflowNodeRequest {
   retryCount?: number;
   positionX?: number;
   positionY?: number;
+  color?: string;
 }
 
 export interface PageWorkflowNodeRequest extends PaginationRequest {
@@ -145,6 +148,77 @@ export interface PageWorkflowNodeRequest extends PaginationRequest {
   applicationId?: string;
   beginTime?: string;
   endTime?: string;
+}
+
+// ============ WorkflowEdge Types ============
+
+export type WorkflowEdgeType = 'default' | 'branch' | 'parallel';
+
+export interface WorkflowEdgeResponse {
+  id: string;
+  createTime: string;
+  updateTime: string;
+  edgeKey: string;
+  applicationId: string;
+  source: string; // Vue Flow uses "source"
+  target: string; // Vue Flow uses "target"
+  sourceHandle?: string;
+  targetHandle?: string;
+  type: WorkflowEdgeType;
+  label?: string;
+  branchName?: string;
+  animated: boolean;
+  style?: Record<string, any>;
+  data?: Record<string, any>;
+}
+
+export interface CreateWorkflowEdgeRequest {
+  edgeKey: string;
+  applicationId: string;
+  source: string;
+  target: string;
+  sourceHandle?: string;
+  targetHandle?: string;
+  type?: WorkflowEdgeType;
+  label?: string;
+  branchName?: string;
+  animated?: boolean;
+  style?: Record<string, any>;
+  data?: Record<string, any>;
+}
+
+export interface UpdateWorkflowEdgeRequest {
+  edgeKey?: string;
+  sourceHandle?: string;
+  targetHandle?: string;
+  type?: WorkflowEdgeType;
+  label?: string;
+  branchName?: string;
+  animated?: boolean;
+  style?: Record<string, any>;
+  data?: Record<string, any>;
+}
+
+export interface PageWorkflowEdgeRequest extends PaginationRequest {
+  applicationId?: string;
+  sourceNodeId?: string;
+  targetNodeId?: string;
+  type?: string;
+  beginTime?: string;
+  endTime?: string;
+}
+
+export interface PageWorkflowEdgeResponse {
+  data: WorkflowEdgeResponse[];
+  pagination: Pagination;
+}
+
+export interface BatchCreateWorkflowEdgesRequest {
+  edges: CreateWorkflowEdgeRequest[];
+}
+
+export interface BatchDeleteWorkflowEdgesRequest {
+  edgeIds: string[];
 }
 
 export interface PageWorkflowNodeResponse {
@@ -292,35 +366,41 @@ export interface PageWorkflowNodeExecutionResponse {
 
 // ============ WorkflowVersion Types ============
 
+/** 版本快照数据结构 */
+export interface WorkflowVersionSnapshot {
+  nodes: WorkflowNodeResponse[];
+  edges: WorkflowEdgeResponse[];
+}
+
+/** 版本响应 */
 export interface WorkflowVersionResponse {
   id: string;
   createTime: string;
   updateTime: string;
   applicationId: string;
   version: number;
-  snapshot: Record<string, any>;
+  snapshot: WorkflowVersionSnapshot;
   changeLog?: string;
-  createdBy?: string;
 }
 
+/** 创建版本请求 */
 export interface CreateWorkflowVersionRequest {
   applicationId: string;
-  version: number;
-  snapshot: Record<string, any>;
   changeLog?: string;
-  createdBy?: string;
 }
 
-export interface PageWorkflowVersionRequest extends PaginationRequest {
-  applicationId?: string;
-  version?: number;
-  beginTime?: string;
-  endTime?: string;
+/** 版本结果 */
+export interface WorkflowVersionResult {
+  success: boolean;
+  data: WorkflowVersionResponse;
+  message?: string;
 }
 
-export interface PageWorkflowVersionResponse {
+/** 版本列表响应 */
+export interface WorkflowVersionListResult {
+  success: boolean;
   data: WorkflowVersionResponse[];
-  pagination: Pagination;
+  count?: number;
 }
 
 // ============ WorkflowExecutionLog Types ============
@@ -468,6 +548,21 @@ export interface WorkflowNodeResult {
 export interface WorkflowNodeListResult {
   success: boolean;
   data: WorkflowNodeResponse[];
+  pagination?: Pagination;
+  count?: number;
+}
+
+/** 单个边响应 */
+export interface WorkflowEdgeResult {
+  success: boolean;
+  data: WorkflowEdgeResponse;
+  message?: string;
+}
+
+/** 边列表响应 */
+export interface WorkflowEdgeListResult {
+  success: boolean;
+  data: WorkflowEdgeResponse[];
   pagination?: Pagination;
   count?: number;
 }

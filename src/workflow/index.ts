@@ -11,6 +11,16 @@ import type {
   CreateWorkflowNodeRequest,
   UpdateWorkflowNodeRequest,
   PageWorkflowNodeRequest,
+  WorkflowEdgeResult,
+  WorkflowEdgeListResult,
+  CreateWorkflowEdgeRequest,
+  UpdateWorkflowEdgeRequest,
+  PageWorkflowEdgeRequest,
+  BatchCreateWorkflowEdgesRequest,
+  BatchDeleteWorkflowEdgesRequest,
+  WorkflowVersionResult,
+  WorkflowVersionListResult,
+  CreateWorkflowVersionRequest,
   ConnectNodesRequest,
   DisconnectNodesRequest,
   ConnectBranchRequest,
@@ -229,5 +239,104 @@ export const batchDeleteNodes = (data: BatchDeleteNodesRequest) => {
   return http.post<SuccessResponse, BatchDeleteNodesRequest>(
     "/api/workflow/graph/batch-delete",
     { data }
+  );
+};
+
+// ============ WorkflowEdge APIs ============
+
+/** 获取所有工作流边列表 */
+export const getWorkflowEdgeList = () => {
+  return http.get<WorkflowEdgeListResult, null>("/api/workflow/edges");
+};
+
+/** 根据应用ID获取工作流边列表 */
+export const getWorkflowEdgesByApplicationId = (applicationId: string) => {
+  return http.get<WorkflowEdgeListResult, { applicationId: string }>(
+    "/api/workflow/edges/by-application",
+    { params: { applicationId } }
+  );
+};
+
+/** 获取工作流边分页列表 */
+export const getWorkflowEdgeListWithPagination = (
+  params?: PageWorkflowEdgeRequest
+) => {
+  return http.get<WorkflowEdgeListResult, PageWorkflowEdgeRequest>(
+    "/api/workflow/edges/page",
+    { params }
+  );
+};
+
+/** 获取单个工作流边 */
+export const getWorkflowEdge = (id: string) => {
+  return http.get<WorkflowEdgeResult, null>(`/api/workflow/edges/${id}`);
+};
+
+/** 创建工作流边 */
+export const createWorkflowEdge = (data: CreateWorkflowEdgeRequest) => {
+  return http.post<WorkflowEdgeResult, CreateWorkflowEdgeRequest>(
+    "/api/workflow/edges",
+    { data }
+  );
+};
+
+/** 更新工作流边 */
+export const updateWorkflowEdge = (
+  id: string,
+  data: UpdateWorkflowEdgeRequest
+) => {
+  return http.put<WorkflowEdgeResult, UpdateWorkflowEdgeRequest>(
+    `/api/workflow/edges/${id}`,
+    { data }
+  );
+};
+
+/** 删除工作流边 */
+export const deleteWorkflowEdge = (id: string) => {
+  return http.delete<SuccessResponse, null>(`/api/workflow/edges/${id}`);
+};
+
+/** 批量创建工作流边 */
+export const batchCreateWorkflowEdges = (
+  data: BatchCreateWorkflowEdgesRequest
+) => {
+  return http.post<WorkflowEdgeListResult, BatchCreateWorkflowEdgesRequest>(
+    "/api/workflow/edges/batch-create",
+    { data }
+  );
+};
+
+/** 批量删除工作流边 */
+export const batchDeleteWorkflowEdges = (
+  data: BatchDeleteWorkflowEdgesRequest
+) => {
+  return http.post<SuccessResponse, BatchDeleteWorkflowEdgesRequest>(
+    "/api/workflow/edges/batch-delete",
+    { data }
+  );
+};
+
+// ============ WorkflowVersion APIs ============
+
+/** 创建工作流版本快照 */
+export const createWorkflowVersion = (data: CreateWorkflowVersionRequest) => {
+  return http.post<WorkflowVersionResult, CreateWorkflowVersionRequest>(
+    "/api/workflow/versions",
+    { data }
+  );
+};
+
+/** 根据应用ID获取版本列表 */
+export const getWorkflowVersionsByApplicationId = (applicationId: string) => {
+  return http.get<WorkflowVersionListResult, null>(
+    "/api/workflow/versions/by-application",
+    { params: { applicationId } }
+  );
+};
+
+/** 获取单个版本 */
+export const getWorkflowVersion = (id: string) => {
+  return http.get<WorkflowVersionResult, null>(
+    `/api/workflow/versions/${id}`
   );
 };

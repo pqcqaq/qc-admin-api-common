@@ -14,6 +14,12 @@ export interface PaginationRequest {
 
 // ============ WorkflowApplication Types ============
 
+export interface ViewportConfig {
+  x: number;
+  y: number;
+  zoom: number;
+}
+
 export interface WorkflowApplicationResponse {
   id: string;
   createTime: string;
@@ -25,6 +31,7 @@ export interface WorkflowApplicationResponse {
   variables?: Record<string, any>;
   version: number;
   status: 'draft' | 'published' | 'archived';
+  viewportConfig?: ViewportConfig;
   nodes?: WorkflowNodeResponse[];
 }
 
@@ -43,6 +50,7 @@ export interface UpdateWorkflowApplicationRequest {
   variables?: Record<string, any>;
   version?: number;
   status?: 'draft' | 'published' | 'archived';
+  viewportConfig?: ViewportConfig;
 }
 
 export interface PageWorkflowApplicationRequest extends PaginationRequest {
@@ -70,6 +78,13 @@ export type WorkflowNodeType =
   | 'parallel_executor'
   | 'llm_caller';
 
+export interface BranchNodeConfig {
+  name: string;
+  condition?: string;
+  handlerId?: string;
+  targetNodeId?: string; // 后端返回的 ID 永远是 string
+}
+
 export interface WorkflowNodeResponse {
   id: string;
   createTime: string;
@@ -85,7 +100,7 @@ export interface WorkflowNodeResponse {
   processorCode?: string;
   nextNodeId?: string;
   parentNodeId?: string;
-  branchNodes?: Record<string, number>;
+  branchNodes?: Record<string, BranchNodeConfig>;
   parallelConfig?: Record<string, any>;
   apiConfig?: Record<string, any>;
   async: boolean;
@@ -108,7 +123,7 @@ export interface CreateWorkflowNodeRequest {
   processorCode?: string;
   nextNodeId?: string;
   parentNodeId?: string;
-  branchNodes?: Record<string, number>;
+  branchNodes?: Record<string, BranchNodeConfig>; // 完整的分支配置
   parallelConfig?: Record<string, any>;
   apiConfig?: Record<string, any>;
   async?: boolean;
@@ -119,18 +134,19 @@ export interface CreateWorkflowNodeRequest {
   color?: string;
 }
 
+// 注意：所有字段都是可选的，只更新提交的字段
 export interface UpdateWorkflowNodeRequest {
-  name: string;
-  nodeKey: string;
-  type: WorkflowNodeType;
+  name?: string;
+  nodeKey?: string;
+  type?: WorkflowNodeType;
   description?: string;
   prompt?: string;
-  config: Record<string, any>;
+  config?: Record<string, any>;
   processorLanguage?: string;
   processorCode?: string;
   nextNodeId?: string;
   parentNodeId?: string;
-  branchNodes?: Record<string, number>;
+  branchNodes?: Record<string, BranchNodeConfig>; // 完整的分支配置
   parallelConfig?: Record<string, any>;
   apiConfig?: Record<string, any>;
   async?: boolean;

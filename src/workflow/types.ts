@@ -90,7 +90,6 @@ export interface WorkflowNodeResponse {
   createTime: string;
   updateTime: string;
   name: string;
-  nodeKey: string;
   type: WorkflowNodeType;
   description?: string;
   prompt?: string;
@@ -98,7 +97,6 @@ export interface WorkflowNodeResponse {
   applicationId: string;
   processorLanguage?: string;
   processorCode?: string;
-  nextNodeId?: string;
   parentNodeId?: string;
   branchNodes?: Record<string, BranchNodeConfig>;
   parallelConfig?: Record<string, any>;
@@ -113,7 +111,6 @@ export interface WorkflowNodeResponse {
 
 export interface CreateWorkflowNodeRequest {
   name: string;
-  nodeKey: string;
   type: WorkflowNodeType;
   description?: string;
   prompt?: string;
@@ -121,8 +118,6 @@ export interface CreateWorkflowNodeRequest {
   applicationId: string;
   processorLanguage?: string;
   processorCode?: string;
-  nextNodeId?: string;
-  parentNodeId?: string;
   branchNodes?: Record<string, BranchNodeConfig>; // 完整的分支配置
   parallelConfig?: Record<string, any>;
   apiConfig?: Record<string, any>;
@@ -137,15 +132,12 @@ export interface CreateWorkflowNodeRequest {
 // 注意：所有字段都是可选的，只更新提交的字段
 export interface UpdateWorkflowNodeRequest {
   name?: string;
-  nodeKey?: string;
   type?: WorkflowNodeType;
   description?: string;
   prompt?: string;
   config?: Record<string, any>;
   processorLanguage?: string;
   processorCode?: string;
-  nextNodeId?: string;
-  parentNodeId?: string;
   branchNodes?: Record<string, BranchNodeConfig>; // 完整的分支配置
   parallelConfig?: Record<string, any>;
   apiConfig?: Record<string, any>;
@@ -159,7 +151,6 @@ export interface UpdateWorkflowNodeRequest {
 
 export interface PageWorkflowNodeRequest extends PaginationRequest {
   name?: string;
-  nodeKey?: string;
   type?: string;
   applicationId?: string;
   beginTime?: string;
@@ -174,7 +165,6 @@ export interface WorkflowEdgeResponse {
   id: string;
   createTime: string;
   updateTime: string;
-  edgeKey: string;
   applicationId: string;
   source: string; // Vue Flow uses "source"
   target: string; // Vue Flow uses "target"
@@ -189,7 +179,6 @@ export interface WorkflowEdgeResponse {
 }
 
 export interface CreateWorkflowEdgeRequest {
-  edgeKey: string;
   applicationId: string;
   source: string;
   target: string;
@@ -204,7 +193,6 @@ export interface CreateWorkflowEdgeRequest {
 }
 
 export interface UpdateWorkflowEdgeRequest {
-  edgeKey?: string;
   sourceHandle?: string;
   targetHandle?: string;
   type?: WorkflowEdgeType;
@@ -235,6 +223,47 @@ export interface BatchCreateWorkflowEdgesRequest {
 
 export interface BatchDeleteWorkflowEdgesRequest {
   edgeIds: string[];
+}
+
+// ============ Batch Save Types ============
+
+export interface BatchSaveWorkflowRequest {
+  applicationId: string;
+  nodeTempIds: string[]; // 要创建的节点的临时ID列表（与 nodesToCreate 一一对应）
+  edgeTempIds: string[]; // 要创建的边的临时ID列表（与 edgesToCreate 一一对应）
+  nodesToCreate: CreateWorkflowNodeRequest[];
+  nodesToUpdate: Array<{ id: string; data: UpdateWorkflowNodeRequest }>;
+  nodeIdsToDelete: string[];
+  edgesToCreate: CreateWorkflowEdgeRequest[];
+  edgesToUpdate: Array<{ id: string; data: UpdateWorkflowEdgeRequest }>;
+  edgeIdsToDelete: string[];
+}
+
+export interface BatchSaveWorkflowResponse {
+  success: boolean;
+  message: string;
+  data: {
+    // ID映射：临时ID -> 数据库ID
+    nodeIdMapping: Record<string, string>;
+    edgeIdMapping: Record<string, string>;
+
+    // 详细数据（可选，用于验证）
+    createdNodes: WorkflowNodeResponse[];
+    updatedNodes: WorkflowNodeResponse[];
+    deletedNodeIds: string[];
+    createdEdges: WorkflowEdgeResponse[];
+    updatedEdges: WorkflowEdgeResponse[];
+    deletedEdgeIds: string[];
+
+    stats: {
+      nodesCreated: number;
+      nodesUpdated: number;
+      nodesDeleted: number;
+      edgesCreated: number;
+      edgesUpdated: number;
+      edgesDeleted: number;
+    };
+  };
 }
 
 export interface PageWorkflowNodeResponse {

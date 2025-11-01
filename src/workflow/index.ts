@@ -18,6 +18,8 @@ import type {
   PageWorkflowEdgeRequest,
   BatchCreateWorkflowEdgesRequest,
   BatchDeleteWorkflowEdgesRequest,
+  BatchSaveWorkflowRequest,
+  BatchSaveWorkflowResponse,
   WorkflowVersionResult,
   WorkflowVersionListResult,
   CreateWorkflowVersionRequest,
@@ -312,6 +314,16 @@ export const batchDeleteWorkflowEdges = (
 ) => {
   return http.post<SuccessResponse, BatchDeleteWorkflowEdgesRequest>(
     "/api/workflow/edges/batch-delete",
+    { data }
+  );
+};
+
+// ============ Batch Save API ============
+
+/** 批量保存工作流（节点和边的增删改） */
+export const batchSaveWorkflow = (data: BatchSaveWorkflowRequest) => {
+  return http.post<BatchSaveWorkflowResponse, BatchSaveWorkflowRequest>(
+    "/api/workflow/batch-save",
     { data }
   );
 };

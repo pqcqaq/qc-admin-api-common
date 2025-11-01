@@ -76,7 +76,8 @@ export type WorkflowNodeType =
   | 'while_loop'
   | 'end_node'
   | 'parallel_executor'
-  | 'llm_caller';
+  | 'llm_caller'
+  | 'workflow';
 
 export interface BranchNodeConfig {
   name: string;
@@ -101,6 +102,7 @@ export interface WorkflowNodeResponse {
   branchNodes?: Record<string, BranchNodeConfig>;
   parallelConfig?: Record<string, any>;
   apiConfig?: Record<string, any>;
+  workflowApplicationId?: string;
   async: boolean;
   timeout: number;
   retryCount: number;
@@ -121,6 +123,7 @@ export interface CreateWorkflowNodeRequest {
   branchNodes?: Record<string, BranchNodeConfig>; // 完整的分支配置
   parallelConfig?: Record<string, any>;
   apiConfig?: Record<string, any>;
+  workflowApplicationId?: string; // 引用的工作流应用ID（workflow节点专用）
   async?: boolean;
   timeout?: number;
   retryCount?: number;
@@ -141,6 +144,7 @@ export interface UpdateWorkflowNodeRequest {
   branchNodes?: Record<string, BranchNodeConfig>; // 完整的分支配置
   parallelConfig?: Record<string, any>;
   apiConfig?: Record<string, any>;
+  workflowApplicationId?: string; // 引用的工作流应用ID（workflow节点专用）
   async?: boolean;
   timeout?: number;
   retryCount?: number;

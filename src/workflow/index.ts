@@ -23,6 +23,8 @@ import type {
   WorkflowVersionResult,
   WorkflowVersionListResult,
   CreateWorkflowVersionRequest,
+  PageWorkflowVersionRequest,
+  PageWorkflowVersionResponse,
   ConnectNodesRequest,
   DisconnectNodesRequest,
   ConnectBranchRequest,
@@ -343,6 +345,16 @@ export const getWorkflowVersionsByApplicationId = (applicationId: string) => {
   return http.get<WorkflowVersionListResult, null>(
     "/api/workflow/versions/by-application",
     { params: { applicationId } }
+  );
+};
+
+/** 分页查询版本列表 */
+export const getWorkflowVersionsWithPagination = (
+  params?: PageWorkflowVersionRequest
+) => {
+  return http.get<PageWorkflowVersionResponse, PageWorkflowVersionRequest>(
+    "/api/workflow/versions/page",
+    { params }
   );
 };
 

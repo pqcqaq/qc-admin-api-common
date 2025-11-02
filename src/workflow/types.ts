@@ -10,6 +10,8 @@ export interface Pagination {
 export interface PaginationRequest {
   page?: number;
   pageSize?: number;
+  orderBy?: string;
+  order?: string; 
 }
 
 // ============ WorkflowApplication Types ============
@@ -450,6 +452,21 @@ export interface WorkflowVersionListResult {
   success: boolean;
   data: WorkflowVersionResponse[];
   count?: number;
+}
+
+/** 分页查询版本请求 */
+export interface PageWorkflowVersionRequest extends PaginationRequest {
+  applicationId?: string;
+  version?: number;
+  beginTime?: string;
+  endTime?: string;
+}
+
+/** 分页查询版本响应 */
+export interface PageWorkflowVersionResponse {
+  data: WorkflowVersionResponse[];
+  pagination: Pagination;
+  success: boolean;
 }
 
 // ============ WorkflowExecutionLog Types ============

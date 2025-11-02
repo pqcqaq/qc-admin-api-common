@@ -81,12 +81,50 @@ export type WorkflowNodeType =
   | 'llm_caller'
   | 'workflow';
 
+// ============ Node Configuration Types ============
+
 export interface BranchNodeConfig {
   name: string;
   condition?: string;
   handlerId?: string;
   targetNodeId?: string; // 后端返回的 ID 永远是 string
 }
+
+export interface ParallelThreadConfig {
+  id: string;
+  name: string;
+  handlerId?: string;
+}
+
+export interface ParallelConfig {
+  mode?: 'all' | 'any' | 'race';
+  timeout?: number;
+  threads?: ParallelThreadConfig[];
+}
+
+export interface APIConfig {
+  url: string;
+  method: string;
+  headers?: Record<string, string>;
+  query?: Record<string, any>;
+  body?: Record<string, any>;
+  timeout?: number;
+}
+
+export interface LLMConfig {
+  model: string;
+  temperature?: number;
+  maxTokens?: number;
+  topP?: number;
+  stream?: boolean;
+}
+
+export interface WhileLoopConfig {
+  condition: string;
+  maxIterations?: number;
+}
+
+// ============ WorkflowNode Response/Request Types ============
 
 export interface WorkflowNodeResponse {
   id: string;
@@ -96,14 +134,15 @@ export interface WorkflowNodeResponse {
   type: WorkflowNodeType;
   description?: string;
   prompt?: string;
-  config: Record<string, any>;
   applicationId: string;
   processorLanguage?: string;
   processorCode?: string;
   parentNodeId?: string;
   branchNodes?: Record<string, BranchNodeConfig>;
-  parallelConfig?: Record<string, any>;
-  apiConfig?: Record<string, any>;
+  parallelConfig?: ParallelConfig;
+  apiConfig?: APIConfig;
+  llmConfig?: LLMConfig;
+  loopConfig?: WhileLoopConfig;
   workflowApplicationId?: string;
   async: boolean;
   timeout: number;
@@ -118,13 +157,14 @@ export interface CreateWorkflowNodeRequest {
   type: WorkflowNodeType;
   description?: string;
   prompt?: string;
-  config: Record<string, any>;
   applicationId: string;
   processorLanguage?: string;
   processorCode?: string;
   branchNodes?: Record<string, BranchNodeConfig>; // 完整的分支配置
-  parallelConfig?: Record<string, any>;
-  apiConfig?: Record<string, any>;
+  parallelConfig?: ParallelConfig;
+  apiConfig?: APIConfig;
+  llmConfig?: LLMConfig;
+  loopConfig?: WhileLoopConfig;
   workflowApplicationId?: string; // 引用的工作流应用ID（workflow节点专用）
   async?: boolean;
   timeout?: number;
@@ -140,12 +180,13 @@ export interface UpdateWorkflowNodeRequest {
   type?: WorkflowNodeType;
   description?: string;
   prompt?: string;
-  config?: Record<string, any>;
   processorLanguage?: string;
   processorCode?: string;
   branchNodes?: Record<string, BranchNodeConfig>; // 完整的分支配置
-  parallelConfig?: Record<string, any>;
-  apiConfig?: Record<string, any>;
+  parallelConfig?: ParallelConfig;
+  apiConfig?: APIConfig;
+  llmConfig?: LLMConfig;
+  loopConfig?: WhileLoopConfig;
   workflowApplicationId?: string; // 引用的工作流应用ID（workflow节点专用）
   async?: boolean;
   timeout?: number;
